@@ -1,0 +1,43 @@
+name: deploy frontend
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    deploy-frontend:
+        name: deploy frontend
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                node-version: [16.x]
+        steps:
+            # リポジトリのチェックアウト
+            - uses: actions/checkout@v3.0.0
+
+            # Node.jsのインストール
+            - name: Set Node.js ${{ matrix.node-version }}
+              uses: actions/setup-node@v3.0.0
+              with:
+                  node-version: ${{ matrix.node-version }}
+
+            # node_modulesをインストール
+            - name: install npm packages
+              run: npm install
+
+            # ビルド
+            - name: build project
+              run: npm run build
+
+            # awsのクレデンシャルを解決
+            - name: configure aws credencials
+              uses: aws-actions/configure-aws-credentials@v1
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ap-northeast-1
+
+            # ビルド後のwebサイトをs3に移動
+            - name: move build source to bucket
+              run: aws s3 sync dist s3://webpage-bucket
